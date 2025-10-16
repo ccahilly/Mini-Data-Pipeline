@@ -1,7 +1,7 @@
 """
-Pipeline Tests
+IO Tests
 
-Unit and integration tests for the data pipeline components.
+Unit tests for the IO components.
 """
 
 import pytest
@@ -10,13 +10,12 @@ import gzip
 from pathlib import Path
 from pipeline.io_utils import download_dataset, stream_jsonl
 
-# pipeline/io_utils.py: stream_jsonl
+# stream_jsonl
 
 def write_jsonl(p: Path, rows):
-    p.write_text("".join([json.dumps(r) for r in rows]), encoding="utf-8")
+    p.write_text("".join([json.dumps(r) + "\n" for r in rows]), encoding="utf-8")
 
 def write_jsonl_gz(p: Path, rows):
-    
     with gzip.open(p, "wt", encoding="utf-8") as f:
         f.writelines([json.dumps(r) + "\n" for r in rows])
 
@@ -32,3 +31,11 @@ def test_basic_yields_dicts(tmp_path: Path, gz: bool):
     
     results = list(stream_jsonl(p))
     assert results == rows
+
+def test_skip_empty_line(tmp_path: Path):
+    p = tmp_path / "data.jsonl"
+    # Manually write with empty lines
+    p.write_text('{"a": 1}\n\n{"b": 2}\n', encoding="utf-8")
+
+    results = list(stream_jsonl(p))
+    assert results == [{"a": 1}, {"b": 2}]
