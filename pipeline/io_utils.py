@@ -93,7 +93,7 @@ def stream_jsonl(
       on_bad_json: Policy when a line is not valid JSON ('raise' | 'skip' | 'log').
       on_bad_decode: Policy when a line can't be decoded ('raise' | 'skip' | 'log').
       validator: Optional predicate(record) -> bool; records failing are skipped (logged).
-      strip_bom: If True, strips UTF-8 BOM on the first non-empty line.
+      strip_bom: If True, strips UTF-8 Byte Order Mark (BOM) on the first non-empty line.
 
     Yields:
       dict objects parsed from each valid JSON line.
@@ -114,16 +114,17 @@ def stream_jsonl(
         saw_content = False
 
         for line_num, raw in enumerate(f, start=1):
-            if not raw or raw.isspace():
+            if not raw.strip():
                 continue  # skip empty/whitespace-only lines
 
             # Optionally strip BOM on first non-empty line
             if strip_bom and not saw_content:
-                saw_content = True
                 if raw.startswith("\ufeff"):
                     raw = raw.lstrip("\ufeff")
             
-            if "\ufffd" in raw and on_bad_decode != "skip":
+            saw_content = True
+
+            if on_bad_decode != "skip" and "\ufffd" in raw:
                 msg = f"{p}:{line_num} - Decode error (replacement char found)"
                 if on_bad_decode == "raise":
                     raise UnicodeDecodeError(encoding, b"", 0, 0, msg)
@@ -132,6 +133,7 @@ def stream_jsonl(
             
             try:
                 rec = json.loads(raw)
+            
             except json.JSONDecodeError as e:
                 if on_bad_json == "raise":
                     raise
@@ -142,6 +144,7 @@ def stream_jsonl(
             if validator is not None:
                 try:
                     ok = bool(validator(rec))
+                
                 except Exception as e:
                     logger.warning(f"{p}:{line_num} - Validator raised exception: {e}")
                     ok = False
