@@ -10,7 +10,16 @@ import gzip
 from pathlib import Path
 from pipeline.io_utils import download_dataset, stream_jsonl
 
-# stream_jsonl
+# download_dataset
+def test_download_dataset_basic(tmp_path: Path):
+    dest = tmp_path / "data.jsonl"
+    url = "https://raw.githubusercontent.com/explosion/projects/refs/heads/v3/tutorials/textcat_docs_issues/assets/gh_issues_raw.jsonl"
+
+    path = download_dataset(url, dest)
+
+    assert path == dest
+    assert path.exists()
+    assert path.stat().st_size > 0
 
 def write_jsonl(p: Path, rows):
     p.write_text("".join([json.dumps(r) + "\n" for r in rows]), encoding="utf-8")
