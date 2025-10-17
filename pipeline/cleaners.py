@@ -6,6 +6,9 @@ Functions for cleaning and normalizing text data.
 
 import re
 from langdetect import detect
+import logging
+
+logger = logging.getLogger(__name__)
 
 def mask_pii(text: str) -> str:
     """
@@ -35,6 +38,12 @@ def is_english(text: str) -> bool:
     """
     
     try:
-        return detect(text) == "en"
+        lang = detect(text)
+        if lang == "en":
+            return True
+        else:
+            logger.warning(f"Detected '{lang}' not 'en'.")
+            return False
     except:
+        logger.error("Language detection failed.")
         return False

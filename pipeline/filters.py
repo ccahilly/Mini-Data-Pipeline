@@ -11,6 +11,16 @@ from pipeline.cleaners import is_english
 logger = logging.getLogger(__name__)
 
 def filter_record(rec: dict, tokenizer, *, min_tokens = 5, max_tokens = 1024) -> bool:
+    '''
+    Filter a record based on text language and token count.
+    Args:
+        rec (dict): The input record containing a "text" field.
+        tokenizer: Tokenizer instance for counting tokens.
+        min_tokens (int): Minimum acceptable token count.
+        max_tokens (int): Maximum acceptable token count.
+    Returns:
+        bool: True if the record should be filtered out, False to keep it.
+    '''
 
     text = rec.get("text", "")
     text = str(text).strip()
