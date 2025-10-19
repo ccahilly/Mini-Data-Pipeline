@@ -56,9 +56,10 @@ def process_file(
 
     try:
         with gzip.open(temp_output_path, "wt", encoding="utf-8") as out_f:
-            for record in stream_jsonl(input_path):
+            for idx, record in enumerate(stream_jsonl(input_path), start=1):
                 text = loader(record) # Extract/load
                 text = mask_pii(text) # Clean
+                
                 if filter_record(text, tokenizer):
                     num_skipped += 1
                 else:
