@@ -6,7 +6,7 @@ Entry point for running the complete data pipeline.
 
 import logging
 from pathlib import Path
-from pipeline.io_utils import stream_jsonl
+from pipeline.io_utils import stream_jsonl, download_dataset
 from pipeline.filters import filter_record
 from pipeline.cleaners import mask_pii
 import tiktoken
@@ -14,10 +14,12 @@ import gzip
 import json
 import tempfile
 from tqdm import tqdm
+from pipeline.loaders import load_dolly15k
 
 def process_file(
         input_path: str | Path, 
         output_path: str | Path, 
+        loader: callable = load_dolly15k,
         *, 
         tokenizer = tiktoken.get_encoding("cl100k_base")
         ) -> bool:
@@ -33,37 +35,45 @@ def process_file(
     '''
     num_kept = 0
     num_skipped = 0
-    
+
     input_path = Path(input_path)
     output_path = Path(output_path)
-    temp_output_path = tempfile.NamedTemporaryFile(delete=False, dir = output_path.parent, suffix=".jsonl.gz")
+
+    if not input_path.exists():
+        raise FileNotFoundError(f"Input file {input_path} does not exist")
+
+    if output_path.suffixes[-2:] != [".jsonl", ".gz"]:
+        raise ValueError("Output file must have .jsonl.gz extension")
+
+    # Create temp file in same directory as output for atomic rename
+    with tempfile.NamedTemporaryFile(
+        mode='w',
+        delete=False,
+        dir=output_path.parent,
+        suffix=".jsonl.gz"
+    ) as temp_file:
+        temp_output_path = Path(temp_file.name)
 
     try:
-        if input_path and not input_path.exists():
-            raise FileNotFoundError(f"Input file {input_path} does not exist")
-
-        if output_path.suffixes[-2:] != [".jsonl", ".gz"]:
-            raise ValueError("Output file must have .jsonl.gz extension")
-
-        with gzip.open(temp_output_path.name, "wt", encoding="utf-8") as out_f:
+        with gzip.open(temp_output_path, "wt", encoding="utf-8") as out_f:
             for record in stream_jsonl(input_path):
-                if filter_record(record, tokenizer):
+                text = loader(record) # Extract/load
+                text = mask_pii(text) # Clean
+                if filter_record(text, tokenizer):
                     num_skipped += 1
                 else:
-                    text = record.get("text", "")
-                    record["text"] = mask_pii(text)
-
-                    out_f.write(json.dumps(record) + "\n")
-
+                    out_f.write(json.dumps({"text": text}) + "\n")
                     num_kept += 1
 
-        temp_output_path.replace(output_path) # atomic rename
-        
+        # Atomic rename
+        temp_output_path.rename(output_path)
+
         logging.info(f"Processing complete. Kept: {num_kept}, Skipped: {num_skipped}")
         return True
 
     except Exception as e:
-        if temp_output_path and temp_output_path.exists():
+        # Clean up temp file on error
+        if temp_output_path.exists():
             temp_output_path.unlink()
 
         logging.error(f"Error processing file {input_path}: {e}")
@@ -93,8 +103,20 @@ def process_all(
 
     logging.info(f"Processing complete. Successful: {successful}, Total: {total}")
 
+def download_all():
+    manifest_path = Path("manifests/datasets.json")
+    with open(manifest_path, "r", encoding="utf-8") as f:
+        manifest = json.load(f)
+
+    for dataset in tqdm(manifest.get("datasets", [])):
+        url = dataset.get("url", "No URL found")
+        dest = dataset.get("filename", "unknown_file")
+        dest = Path("data/raw") / dest
+        download_dataset(url, dest)
+
 def main():
     logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+    download_all()
     process_all()
 
 if __name__ == "__main__":
