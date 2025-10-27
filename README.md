@@ -4,7 +4,7 @@ A lightweight data pipeline that downloads, cleans, filters, and summarizes a sm
 
 ## Overview
 
-This project demonstrates a production-quality data pipeline designed for processing text datasets. Built as interview preparation for a role on the data team at Reflection AI, it showcases best practices in data engineering including modularity, testing, and reproducibility.
+This project demonstrates a production-quality data pipeline designed for processing text datasets. It showcases best practices in data engineering including modularity, testing, and reproducibility.
 
 ## Project Structure
 
