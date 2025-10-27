@@ -113,7 +113,11 @@ def download_all():
         url = dataset.get("url", "No URL found")
         dest = dataset.get("filename", "unknown_file")
         dest = Path("data/raw") / dest
-        download_dataset(url, dest)
+        
+        try:
+            download_dataset(url, dest)
+        except:
+            logging.warning(f"Failed to download dataset from {url}")
 
 def main():
     logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")

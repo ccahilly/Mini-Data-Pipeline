@@ -67,7 +67,7 @@ def download_dataset(url: str, dest: str | Path, timeout: int = 20) -> Path:  # 
         return dest
     
     except (requests.RequestException, IOError) as e:
-        logger.error(f"Failed to download {url}. Error: {e}")
+        logger.warning(f"Failed to download {url}. Error: {e}")
         if temp_path and temp_path.exists():
             temp_path.unlink()  # Clean up temp file
         raise
@@ -76,9 +76,9 @@ def stream_jsonl(
         path: str | Path,
         *,
         encoding: str = "utf-8",
-        decode_errors: Literal["strict", "ignore", "replace"] = "strict",
-        on_bad_json: Literal["raise", "skip", "log"] = "raise",
-        on_bad_decode: Literal["raise", "skip", "log"] = "skip",
+        decode_errors: Literal["strict", "ignore", "replace"] = "replace",
+        on_bad_json: Literal["raise", "skip", "log"] = "log",
+        on_bad_decode: Literal["raise", "skip", "log"] = "log",
         validator: Callable[[dict], bool] | None = None,
         strip_bom: bool = True,
         ) -> Iterator[dict]:
